@@ -18,6 +18,7 @@ public class GraphicsActivity extends Activity implements GLSurfaceView.Renderer
 {
     int _program = -1;
     static final int POSITION_ATTRIBUTE_ID = 0;
+    static final int COLOR_ATTRIBUTE_ID = 1;
 
     float _translateX;
     float _translateY;
@@ -40,13 +41,14 @@ public class GraphicsActivity extends Activity implements GLSurfaceView.Renderer
     {
         String vertexShaderSource = "" +
                 "attribute vec4 position; \n" +
+                "attribute vec4 color; \n" +
                 "uniform vec2 translate; \n" +
                 "varying vec4 colorVarying; \n" +
                 " \n" +
                 "void main() \n" +
                 "{ \n" +
                 "  gl_Position = vec4(position.x + translate.x, position.y + translate.y, position.z, position.w); \n" +
-                "  colorVarying = gl_Position;\n" +
+                "  colorVarying = color;\n" +
                 "} \n" +
                 " \n";
 
@@ -98,7 +100,21 @@ public class GraphicsActivity extends Activity implements GLSurfaceView.Renderer
         GLES20.glEnableVertexAttribArray(POSITION_ATTRIBUTE_ID);
         GLES20.glVertexAttribPointer(POSITION_ATTRIBUTE_ID, 4, GLES20.GL_FLOAT, false, 4 * 4, trianglePointsBuffer);
 
+        float[] triangleColors =
+                {
+                        1.0f, 0.0f, 0.0f, 1.0f,
+                        0.0f, 1.0f, 0.0f, 1.0f,
+                        0.0f,  0.0f, 1.0f, 1.0f,
+                };
 
+        ByteBuffer triangleColorsByteBuffer = ByteBuffer.allocateDirect(triangleColors.length * 4);
+        triangleColorsByteBuffer.order(ByteOrder.nativeOrder());
+        FloatBuffer triangleColorsBuffer = triangleColorsByteBuffer.asFloatBuffer();
+        triangleColorsBuffer.put(triangleColors);
+        triangleColorsBuffer.rewind();
+
+        GLES20.glEnableVertexAttribArray(COLOR_ATTRIBUTE_ID);
+        GLES20.glVertexAttribPointer(COLOR_ATTRIBUTE_ID, 4, GLES20.GL_FLOAT, false, 4 * 4, triangleColorsBuffer);
     }
 
     @Override
