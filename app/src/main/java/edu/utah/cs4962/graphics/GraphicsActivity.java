@@ -7,6 +7,7 @@ import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.GLUtils;
 import android.os.Bundle;
+import android.util.FloatMath;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -25,6 +26,9 @@ public class GraphicsActivity extends Activity implements GLSurfaceView.Renderer
 
     float _translateX;
     float _translateY;
+    float _rotation;
+    float _scaleX;
+    float _scaleY;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -43,13 +47,13 @@ public class GraphicsActivity extends Activity implements GLSurfaceView.Renderer
     {
         String vertexShaderSource = "" +
                 "attribute vec4 position; \n" +
-                "uniform vec2 translate; \n" +
+                "uniform mat4 modelView; \n" +
                 "attribute vec2 textureCoordinate; \n" +
                 "varying vec2 textureCoordinateVarying; \n" +
                 " \n" +
                 "void main() \n" +
                 "{ \n" +
-                "  gl_Position = vec4(position.x + translate.x, position.y + translate.y, position.z, position.w); \n" +
+                "  gl_Position = modelView * position; \n" +
                 "  textureCoordinateVarying = textureCoordinate;\n" +
                 "} \n" +
                 " \n";
@@ -91,38 +95,40 @@ public class GraphicsActivity extends Activity implements GLSurfaceView.Renderer
         // make background gray
         GLES20.glClearColor(0.8f, 0.8f, 0.8f, 0.8f);
 
-        // triangle vertices coordinates
-        float[] trianglePoints =
+        // quad vertices coordinates
+        float[] quadPoints =
                 {
                         -0.5f, -0.5f, 0.0f, 1.0f,
                         0.5f, -0.5f, 0.0f, 1.0f,
-                        0.0f,  0.5f, 0.0f, 1.0f
+                        -0.5f, 0.5f, 0.0f, 1.0f,
+                        0.5f, 0.5f, 0.0f, 1.0f,
                 };
 
-        ByteBuffer trianglePointsByteBuffer = ByteBuffer.allocateDirect(trianglePoints.length * 4);
-        trianglePointsByteBuffer.order(ByteOrder.nativeOrder());
-        FloatBuffer trianglePointsBuffer = trianglePointsByteBuffer.asFloatBuffer();
-        trianglePointsBuffer.put(trianglePoints);
-        trianglePointsBuffer.rewind();
+        ByteBuffer quadPointsByteBuffer = ByteBuffer.allocateDirect(quadPoints.length * 4);
+        quadPointsByteBuffer.order(ByteOrder.nativeOrder());
+        FloatBuffer quadPointsBuffer = quadPointsByteBuffer.asFloatBuffer();
+        quadPointsBuffer.put(quadPoints);
+        quadPointsBuffer.rewind();
 
-        // triangle texture coordinates
-        float[] triangleTextureCoordinates =
+        // quad texture coordinates
+        float[] quadTextureCoordinates =
                 {
                         0.0f, 1.0f,
                         1.0f, 1.0f,
-                        0.5f, 0.0f
+                        0.0f, 0.0f,
+                        1.0f, 0.0f,
                 };
 
-        ByteBuffer triangleTextureByteBuffer = ByteBuffer.allocateDirect(triangleTextureCoordinates.length * 4);
-        triangleTextureByteBuffer.order(ByteOrder.nativeOrder());
-        FloatBuffer triangleTextureBuffer = triangleTextureByteBuffer.asFloatBuffer();
-        triangleTextureBuffer.put(triangleTextureCoordinates);
-        triangleTextureBuffer.rewind();
+        ByteBuffer quadTextureByteBuffer = ByteBuffer.allocateDirect(quadTextureCoordinates.length * 4);
+        quadTextureByteBuffer.order(ByteOrder.nativeOrder());
+        FloatBuffer quadTextureBuffer = quadTextureByteBuffer.asFloatBuffer();
+        quadTextureBuffer.put(quadTextureCoordinates);
+        quadTextureBuffer.rewind();
 
         GLES20.glEnableVertexAttribArray(POSITION_ATTRIBUTE_ID);
-        GLES20.glVertexAttribPointer(POSITION_ATTRIBUTE_ID, 4, GLES20.GL_FLOAT, false, 4 * 4, trianglePointsBuffer);
+        GLES20.glVertexAttribPointer(POSITION_ATTRIBUTE_ID, 4, GLES20.GL_FLOAT, false, 4 * 4, quadPointsBuffer);
         GLES20.glEnableVertexAttribArray(TEXTURE_COORDINATE_ATTRIBUTE_ID);
-        GLES20.glVertexAttribPointer(TEXTURE_COORDINATE_ATTRIBUTE_ID, 2, GLES20.GL_FLOAT, false, 2 * 4, triangleTextureBuffer);
+        GLES20.glVertexAttribPointer(TEXTURE_COORDINATE_ATTRIBUTE_ID, 2, GLES20.GL_FLOAT, false, 2 * 4, quadTextureBuffer);
 
 
         // loading texture
@@ -139,19 +145,34 @@ public class GraphicsActivity extends Activity implements GLSurfaceView.Renderer
     @Override
     public void onSurfaceChanged(GL10 gl10, int width, int height)
     {
-        GLES20.glViewport(0, 0, width, height);
+        if (width < height)
+            GLES20.glViewport((width - height) / 2, 0, height, height);
+        else
+            GLES20.glViewport((width - height) / 2, 0, height, height);
     }
 
     @Override
     public void onDrawFrame(GL10 gl10)
     {
-        _translateX += 0.0f;//01f;
-        _translateY += 0.0f;//005f;
+        _translateX += 0.0001f;
+        _translateY += 0.0005f;
+        _rotation += 0.001f;
+        _scaleX += 0.005;
+        _scaleY += 0.005;
+
+
+        float[] modelView = new float[]
+                {
+                        _scaleX * FloatMath.cos(_rotation), _scaleY * FloatMath.sin(_rotation), 0.0f, 0.0f,
+                        -_scaleX * FloatMath.sin(_rotation), _scaleY * FloatMath.cos(_rotation), 0.0f, 0.0f,
+                        0.0f, 0.0f, 1.0f, 0.0f,
+                        _translateX, _translateY, 0.0f, 1.0f,
+                };
 
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
-        int translateLocation = GLES20.glGetUniformLocation(_program, "translate");
-        GLES20.glUniform2f(translateLocation, _translateX, _translateY);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 3);
+        int modelViewLocation = GLES20.glGetUniformLocation(_program, "modelView");
+        GLES20.glUniformMatrix4fv(modelViewLocation, 1, false, modelView, 0);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
     }
 }
